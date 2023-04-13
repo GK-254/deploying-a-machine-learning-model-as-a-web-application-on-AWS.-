@@ -1,0 +1,53 @@
+# Import necessary libraries
+import tensorflow as tf
+from tensorflow import keras
+from flask import Flask, request, jsonify
+
+# Load the fruit classification model
+model = keras.models.load_model('fruit_classifier.h5')
+
+# Define the Flask app
+app = Flask(__name__)
+
+# Define the endpoint for handling image uploads
+@app.route('/predict', methods=['POST'])
+def predict():
+    # Get the uploaded image
+    image = request.files.get('image').read()
+    
+    # Preprocess the image
+    processed_image = preprocess_image(image)
+    
+    # Use the model to make a prediction
+    prediction = model.predict(processed_image)
+    predicted_class = get_class(prediction)
+    
+    # Return the prediction as a JSON object
+    return jsonify({'prediction': predicted_class})
+
+# Preprocess the image for model input
+def preprocess_image(image):
+    # Resize the image to 224x224
+    resized_image = tf.image.resize(image, (224, 224))
+    
+    # Convert the image to a numpy array
+    numpy_image = keras.preprocessing.image.img_to_array(resized_image)
+    
+    # Normalize the image
+    normalized_image = keras.applications.mobilenet_v2.preprocess_input(numpy_image)
+    
+    # Add a batch dimension
+    processed_image = tf.expand_dims(normalized_image, axis=0)
+    
+    return processed_image
+
+# Get the predicted class from the model output
+def get_class(prediction):
+    class_indices = {0: 'apple', 1: 'banana', 2: 'orange'}
+    predicted_class = class_indices[prediction.argmax()]
+    
+    return predicted_class
+
+# Run the Flask app
+if __name__ == '__main__':
+    app.run(debug=True)
